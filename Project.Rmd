@@ -37,6 +37,9 @@ Shaurya Pratap Singh
 
 
 ```{r}
+library(dplyr)
+library(tidyr)
+
 eda_summary <- function(df, df_name) {
   cat("\n============================\n")
   cat("Summary for", df_name, "\n")
@@ -56,20 +59,38 @@ eda_summary <- function(df, df_name) {
   if (any(char_cols)) {
     cat("\nCharacter Columns (Checking if Categorical):\n")
     for (colname in names(df)[char_cols]) {
-      n_unique <- n_distinct(df[[colname]])
-      cat("\n", colname, "- Unique Values:", n_unique, "\n")
-      
-      if (n_unique <= 30) {  # You can adjust threshold if needed
-        cat("Likely Categorical. Distribution:\n")
-        print(table(df[[colname]]))
+      # Special case: if the column has commas (like genres), split it first
+      if (any(grepl(",", df[[colname]], fixed = TRUE))) {
+        split_values <- unlist(strsplit(df[[colname]], ","))
+        split_values <- trimws(split_values)  # remove spaces
+        n_unique <- length(unique(split_values))
+        
+        cat("\n", colname, "(split on commas) - Unique Values:", n_unique, "\n")
+        
+        if (n_unique <= 50) {
+          cat("Likely Categorical after splitting. Distribution:\n")
+          print(table(split_values))
+        } else {
+          cat("Not categorical (too many unique values after splitting).\n")
+        }
+        
       } else {
-        cat("Not categorical (too many unique values).\n")
+        n_unique <- n_distinct(df[[colname]])
+        cat("\n", colname, "- Unique Values:", n_unique, "\n")
+        
+        if (n_unique <= 30) {
+          cat("Likely Categorical. Distribution:\n")
+          print(table(df[[colname]]))
+        } else {
+          cat("Not categorical (too many unique values).\n")
+        }
       }
     }
   } else {
     cat("\nNo Character Columns.\n")
   }
 }
+
 
 # Run EDA for all 4 tables
 eda_summary(name_basics, "name_basics")
