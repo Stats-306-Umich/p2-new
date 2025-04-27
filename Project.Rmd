@@ -28,7 +28,7 @@ Shaurya Pratap Singh
 * Run the function on all of the `*_sample.csv.gz` files to created processed `.rda` files.
 * In your other files, you can load these using the `TABLE <- read_rds("data/FILENAME.rda")` function.
 
-## Part II: EDA of individual tables
+## Part II: EDA of individual tables (aden)
 
 * For each of the 4 tables, perform basic exploratory data analysis. Report the following information:
   * For each quantitative column, provide some summary statistics
@@ -115,11 +115,63 @@ ggplot(title_basics_long, aes(x = genres)) +
 * How many titles use alliteration (i.e., all words in the title start with the same letter)?
 
 
-## Part III: Pivoting
+## Part III: Pivoting (Hania)
 
 * Create a new version of the `titles_basics` table that has one row for each title-genre combination. See the `separate_rows` function for a useful too here.
+```{r new, echo = TRUE }
+library(tidyr)
+library(dplyr)
+
+titles_genre_expanded <- title_basics %>%
+  separate_rows(genres, sep = ",")
+titles_genre_expanded
+```
+
 * Using that table, create a line plot of the count different genres over time (you may limit this to the most common genres if you wish).
+```{r table, echo = TRUE}
+
+genre_counts <- titles_genre_expanded %>%
+  group_by(startYear, genres) %>%
+  summarise(count = n()) %>%
+  filter(!is.na(startYear))
+
+top_genres <- genre_counts %>%
+  group_by(genres) %>%
+  summarise(total_count = sum(count)) %>%
+  top_n(10, total_count) %>%
+  pull(genres)
+
+genre_counts_top <- genre_counts %>%
+  filter(genres %in% top_genres)
+
+ggplot(genre_counts_top, aes(x = startYear, y = count, color = genres)) +
+  geom_line() +
+  labs(
+    title = "Count of Different Genres Over Time",
+    x = "Year",
+    y = "Genre Count"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+```
+
+
 * Use the `model.matrix` function in the following way: `model.matrix(yourtalltable, ~ genre - 1)` to create a wide table with one column for each genre. Use this table to find the most common pair of genres (hint: use the `cor` function or produce facet plots)
+**The most common pair is genreNA and genresFilm-Noir**
+```{r}
+genre_matrix <- model.matrix(~ genres - 1, data = titles_genre_expanded)
+
+# 2. Calculate the correlation matrix
+genre_cor_matrix <- cor(genre_matrix)
+
+# 3. Find the most common pair of genres
+most_common_pair <- which(genre_cor_matrix == max(genre_cor_matrix[lower.tri(genre_cor_matrix)]), arr.ind = TRUE)
+print(most_common_pair)
+
+```
+
+
 
 ## Part IV: Joining Tables
 
@@ -134,6 +186,7 @@ ggplot(title_basics_long, aes(x = genres)) +
 * Create a table with one row for each person in the `name_basics` table and title they are known for. Join this to the ratings table to get the ratings of the "known for" films. Find the person (or people) who have the highest median known for rating.
 * 
 
+
 ## Part V: Profiling and Parallel Processing
 
 * These are large data sets (and yet only a sample of the entire IMDb!), so it make sense spend some time improving our code.
@@ -141,11 +194,13 @@ ggplot(title_basics_long, aes(x = genres)) +
 * Select a previous computation that could be improved using parallelization and implement a parallelization solution. Using `system.time` show that parallelization improves performance.
 * One task we performed involved counting items in strings separated by commas. Propose two different functions that could perform this taks. Compare them using bench marking. Which version would you recommend?
 
-## Part VI: Shiny Applications
+## Part VI: Shiny Applications (Hania)
+
 
 ### Application 1
 
 Using results from the previous section, create a shiny application that allows users to interact with the with the IMDb data. The application should use both interactive graphs and at least 3 widgets.
+
 
 ### Application 2
 
