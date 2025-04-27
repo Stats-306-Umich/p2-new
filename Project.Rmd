@@ -16,7 +16,7 @@ The [Internet Movie Database (IMDb)]() contains information on millions of movie
 
 
 ## Part I: Preprocessing
-
+Shaurya Pratap Singh
 * [Edit your `.gitignore` file](https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files) to ignore all files with the `.rda` extension. (Add and commit)
 * Create a new file in the `data/` directory called "Preprocessing.Rmd". The remaining instructions in this section are to be completed in that file.
 * Write a function that will load a table from the IMDb files in the `data/` directory.

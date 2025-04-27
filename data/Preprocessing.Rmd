@@ -1,0 +1,28 @@
+```{r}
+library(readr)
+
+preprocess <- function(filename) {
+  filepath <- paste0(filename, ".csv.gz")
+  
+  table <- readr::read_csv(filepath, na = "\\N")
+  
+  return(table)
+}
+
+# Load name_basics_sample.csv.gz
+name_basics <- preprocess("name_basics_sample")
+write_rds(name_basics, "name_basics.rda")
+
+# Load title_basics_sample.csv.gz
+title_basics <- preprocess("title_basics_sample")
+write_rds(title_basics, "title_basics.rda")
+
+# Load title_principals_sample.csv.gz
+title_principals <- preprocess("title_principals_sample")
+write_rds(title_principals, "title_principals.rda")
+
+# Load title_ratings_sample.csv.gz
+title_ratings <- preprocess("title_ratings_sample")
+write_rds(title_ratings, "title_ratings.rda")
+
+```
