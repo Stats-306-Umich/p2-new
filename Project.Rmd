@@ -137,6 +137,7 @@ ggplot(genre_counts_top, aes(x = startYear, y = count, color = genres)) +
 
 ```
 
+
 * Use the `model.matrix` function in the following way: `model.matrix(yourtalltable, ~ genre - 1)` to create a wide table with one column for each genre. Use this table to find the most common pair of genres (hint: use the `cor` function or produce facet plots)
 **The most common pair is genreNA and genresFilm-Noir**
 ```{r}
@@ -178,6 +179,7 @@ print(most_common_pair)
 ### Application 1
 
 Using results from the previous section, create a shiny application that allows users to interact with the with the IMDb data. The application should use both interactive graphs and at least 3 widgets.
+
 
 ### Application 2
 
