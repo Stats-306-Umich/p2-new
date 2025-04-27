@@ -81,6 +81,25 @@ eda_summary(title_ratings, "title_ratings")
 
 
   * Provide a plot for each table. Across all of the plots, try to show off the most possible different ggplot features (`geoms_` functions, `stat_` functions, coordinate systems, facets, use of several variables, annotations)
+  
+```{r}
+ggplot(name_basics, aes(x = birthYear)) +
+  geom_histogram(bins = 30, fill = "lightblue", color = "black") +
+  geom_density(aes(y = ..count..), color = "red") +
+  labs(title = "Distribution of Birth Years", x = "Birth Year", y = "Count") +
+  theme_minimal()
+
+title_basics_long <- title_basics %>%
+  tidyr::separate_rows(genres, sep = ",") %>%
+  filter(!is.na(genres))
+
+ggplot(title_basics_long, aes(x = genres)) +
+  geom_bar(fill = "skyblue") +
+  coord_flip() +
+  labs(title = "Count of Movies by Genre", x = "Genre", y = "Count") +
+  theme_bw()
+
+```
 * For the `titles_basics` table
   * use two different variables to group and explore how `runtimeMinutes` varies for these different groups. Produce appropriate summaries.
   * How many titles are known for name that is different than the original release name?
