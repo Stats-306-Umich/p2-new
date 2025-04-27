@@ -99,8 +99,53 @@ eda_summary(title_ratings, "title_ratings")
 ## Part III: Pivoting (Hania)
 
 * Create a new version of the `titles_basics` table that has one row for each title-genre combination. See the `separate_rows` function for a useful too here.
+```{r new, echo = TRUE }
+library(tidyr)
+library(dplyr)
+
+titles_genre_expanded <- title_basics %>%
+  separate_rows(genres, sep = ",")
+titles_genre_expanded
+```
+
 * Using that table, create a line plot of the count different genres over time (you may limit this to the most common genres if you wish).
+```{r table, echo = TRUE}
+
+genre_counts <- titles_genre_expanded %>%
+  group_by(startYear, genres) %>%
+  summarise(count = n()) %>%
+  filter(!is.na(startYear))
+
+top_genres <- genre_counts %>%
+  group_by(genres) %>%
+  summarise(total_count = sum(count)) %>%
+  top_n(10, total_count) %>%
+  pull(genres)
+
+genre_counts_top <- genre_counts %>%
+  filter(genres %in% top_genres)
+
+ggplot(genre_counts_top, aes(x = startYear, y = count, color = genres)) +
+  geom_line() +
+  labs(
+    title = "Count of Different Genres Over Time",
+    x = "Year",
+    y = "Genre Count"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+```
+
 * Use the `model.matrix` function in the following way: `model.matrix(yourtalltable, ~ genre - 1)` to create a wide table with one column for each genre. Use this table to find the most common pair of genres (hint: use the `cor` function or produce facet plots)
+```{r}
+genre_matrix <- model.matrix(~ genres - 1, data = titles_genre_expanded)
+#Find the most common pair of genres
+most_common_pair <- which(genre_cor_matrix == max(genre_cor_matrix[lower.tri(genre_cor_matrix)]), arr.ind = TRUE)
+print(most_common_pair)
+
+```
+
 
 ## Part IV: Joining Tables
 
