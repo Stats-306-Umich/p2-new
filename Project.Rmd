@@ -33,6 +33,53 @@ Shaurya Pratap Singh
 * For each of the 4 tables, perform basic exploratory data analysis. Report the following information:
   * For each quantitative column, provide some summary statistics
   * For any character columns, decided if they are actually representing factors/categorical data with a moderate number of columns. If so report the distributions for these variables.
+  
+
+
+```{r}
+eda_summary <- function(df, df_name) {
+  cat("\n============================\n")
+  cat("Summary for", df_name, "\n")
+  cat("============================\n")
+  
+  # Quantitative Columns
+  num_cols <- sapply(df, is.numeric)
+  if (any(num_cols)) {
+    cat("\nQuantitative Columns Summary:\n")
+    print(summary(df[, num_cols]))
+  } else {
+    cat("\nNo Quantitative Columns.\n")
+  }
+  
+  # Character Columns
+  char_cols <- sapply(df, is.character)
+  if (any(char_cols)) {
+    cat("\nCharacter Columns (Checking if Categorical):\n")
+    for (colname in names(df)[char_cols]) {
+      n_unique <- n_distinct(df[[colname]])
+      cat("\n", colname, "- Unique Values:", n_unique, "\n")
+      
+      if (n_unique <= 30) {  # You can adjust threshold if needed
+        cat("Likely Categorical. Distribution:\n")
+        print(table(df[[colname]]))
+      } else {
+        cat("Not categorical (too many unique values).\n")
+      }
+    }
+  } else {
+    cat("\nNo Character Columns.\n")
+  }
+}
+
+# Run EDA for all 4 tables
+eda_summary(name_basics, "name_basics")
+eda_summary(title_basics, "title_basics")
+eda_summary(title_principals, "title_principals")
+eda_summary(title_ratings, "title_ratings")
+
+```
+
+
   * Provide a plot for each table. Across all of the plots, try to show off the most possible different ggplot features (`geoms_` functions, `stat_` functions, coordinate systems, facets, use of several variables, annotations)
 * For the `titles_basics` table
   * use two different variables to group and explore how `runtimeMinutes` varies for these different groups. Produce appropriate summaries.
@@ -47,6 +94,7 @@ Shaurya Pratap Singh
       * Do the same for living cast members.
 * Find all the actors with first names "Tom", "Thomas", "Thom" or "Tomas". How many are there?
 * How many titles use alliteration (i.e., all words in the title start with the same letter)?
+
 
 ## Part III: Pivoting
 
