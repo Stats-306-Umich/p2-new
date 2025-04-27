@@ -167,6 +167,7 @@ print(most_common_pair)
 * Create a table with one row for each person in the `name_basics` table and title they are known for. Join this to the ratings table to get the ratings of the "known for" films. Find the person (or people) who have the highest median known for rating.
 * 
 
+
 ## Part V: Profiling and Parallel Processing
 
 * These are large data sets (and yet only a sample of the entire IMDb!), so it make sense spend some time improving our code.
