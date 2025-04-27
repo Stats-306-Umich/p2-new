@@ -138,13 +138,19 @@ ggplot(genre_counts_top, aes(x = startYear, y = count, color = genres)) +
 ```
 
 * Use the `model.matrix` function in the following way: `model.matrix(yourtalltable, ~ genre - 1)` to create a wide table with one column for each genre. Use this table to find the most common pair of genres (hint: use the `cor` function or produce facet plots)
+**The most common pair is genreNA and genresFilm-Noir**
 ```{r}
 genre_matrix <- model.matrix(~ genres - 1, data = titles_genre_expanded)
-#Find the most common pair of genres
+
+# 2. Calculate the correlation matrix
+genre_cor_matrix <- cor(genre_matrix)
+
+# 3. Find the most common pair of genres
 most_common_pair <- which(genre_cor_matrix == max(genre_cor_matrix[lower.tri(genre_cor_matrix)]), arr.ind = TRUE)
 print(most_common_pair)
 
 ```
+
 
 
 ## Part IV: Joining Tables
