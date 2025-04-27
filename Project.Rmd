@@ -176,6 +176,7 @@ print(most_common_pair)
 
 ## Part VI: Shiny Applications (Hania)
 
+
 ### Application 1
 
 Using results from the previous section, create a shiny application that allows users to interact with the with the IMDb data. The application should use both interactive graphs and at least 3 widgets.
