@@ -28,7 +28,7 @@ Shaurya Pratap Singh
 * Run the function on all of the `*_sample.csv.gz` files to created processed `.rda` files.
 * In your other files, you can load these using the `TABLE <- read_rds("data/FILENAME.rda")` function.
 
-## Part II: EDA of individual tables
+## Part II: EDA of individual tables (aden)
 
 * For each of the 4 tables, perform basic exploratory data analysis. Report the following information:
   * For each quantitative column, provide some summary statistics
@@ -96,7 +96,7 @@ eda_summary(title_ratings, "title_ratings")
 * How many titles use alliteration (i.e., all words in the title start with the same letter)?
 
 
-## Part III: Pivoting
+## Part III: Pivoting (Hania)
 
 * Create a new version of the `titles_basics` table that has one row for each title-genre combination. See the `separate_rows` function for a useful too here.
 * Using that table, create a line plot of the count different genres over time (you may limit this to the most common genres if you wish).
@@ -122,7 +122,7 @@ eda_summary(title_ratings, "title_ratings")
 * Select a previous computation that could be improved using parallelization and implement a parallelization solution. Using `system.time` show that parallelization improves performance.
 * One task we performed involved counting items in strings separated by commas. Propose two different functions that could perform this taks. Compare them using bench marking. Which version would you recommend?
 
-## Part VI: Shiny Applications
+## Part VI: Shiny Applications (Hania)
 
 ### Application 1
 
