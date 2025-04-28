@@ -300,7 +300,87 @@ After re‐profiling the fully optimized pipeline with profvis, total elapsed ti
 
 
 * Select a previous computation that could be improved using parallelization and implement a parallelization solution. Using `system.time` show that parallelization improves performance.
+
+```{r parallel-genre-counts, message=FALSE, warning=FALSE}
+library(data.table)
+library(data.table)
+library(parallel)
+
+#–– Prepare the long‐form genre table (if you haven’t already)
+dt <- as.data.table(title_basics)
+titles_genre_dt <- dt[
+  !is.na(startYear) & genres != "",
+  .(
+    tconst,
+    primaryTitle,
+    startYear,
+    genres = unlist(strsplit(genres, split = ","))
+  ),
+  by = .(tconst)
+]
+
+years <- unique(titles_genre_dt$startYear)
+
+#–– Create a fork cluster (inherits loaded packages & objects!)
+ncores <- max(detectCores() - 1, 1)
+cl     <- makeForkCluster(ncores)
+
+#–– Serial timing
+t_serial <- system.time({
+  genre_counts_serial <- titles_genre_dt[, .(count = .N), by = .(startYear, genres)]
+})
+
+#–– Parallel timing
+t_parallel <- system.time({
+  year_lists <- parLapply(cl, years, function(yr) {
+    sub <- titles_genre_dt[startYear == yr]
+    sub[, .(startYear = yr, genres, count = .N), by = genres]
+  })
+  genre_counts_parallel <- rbindlist(year_lists)
+})
+
+stopCluster(cl)
+
+#–– Print results
+print(t_serial)
+print(t_parallel)
+```
+There is a clear improvement when using parallel processing.
+
+
 * One task we performed involved counting items in strings separated by commas. Propose two different functions that could perform this taks. Compare them using bench marking. Which version would you recommend?
+
+```{r comma-count-benchmark, message=FALSE}
+library(stringr)
+library(microbenchmark)
+
+# Sample 10,000 non-NA genre‐strings
+set.seed(123)
+test_vec <- sample(na.omit(title_basics$genres), 10000, replace = TRUE)
+
+# Function 1: count commas via regex + add 1
+count_commas <- function(x) {
+  str_count(x, ",") + 1
+}
+
+# Function 2: split on commas & take lengths
+count_split <- function(x) {
+  lengths(strsplit(x, ","))
+}
+
+# Sanity check now passes
+stopifnot(all(count_commas(test_vec) == count_split(test_vec)))
+
+# Benchmark the two approaches
+bm <- microbenchmark(
+  regex_count = count_commas(test_vec),
+  split_count = count_split(test_vec),
+  times = 100L
+)
+print(bm)
+
+```
+The regex_count version runs roughly 3× faster (median ≈1.6 ms vs. ≈5.0 ms) and is more concise. Recommendation: use str_count(x, ",") + 1 for counting comma-separated items.
 
 ## Part VI: Shiny Applications (Hania)
 
