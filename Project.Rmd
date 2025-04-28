@@ -1,9 +1,13 @@
 ---
 title: "DataSci 306 Final Project"
-author: "DataSci 306 Instructional Team"
+author: "Hania Timek, Shaurya Pratap Singh, Aden Tao"
 date: "`r Sys.Date()`"
-output: html_document
+output: 
+  pdf_document:
+    latex_engine: xelatex
+always_allow_html: true
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -11,13 +15,16 @@ library(tidyverse)
 
 ```
 
+*  Hania Timek positcloud has the r script files for the applications in part 6
+
+* Shaurya Pratap Singh has the r script files for the applications in extra credit. Under the folder "application3"
+
 ## Investigating the Internet Movie Database (IMDB)
 
 The [Internet Movie Database (IMDb)]() contains information on millions of movies and television programs. They offer several [non-commercial use datasets](https://developer.imdb.com/non-commercial-datasets/) (documentation link). For this project we will analyze a **sample** of 100,000 titles from the IMDBb. 
 
 
 ## Part I: Preprocessing
-Shaurya Pratap Singh
 * [Edit your `.gitignore` file](https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files) to ignore all files with the `.rda` extension. (Add and commit)
 * Create a new file in the `data/` directory called "Preprocessing.Rmd". The remaining instructions in this section are to be completed in that file.
 * Write a function that will load a table from the IMDb files in the `data/` directory.
@@ -29,14 +36,19 @@ Shaurya Pratap Singh
 * Run the function on all of the `*_sample.csv.gz` files to created processed `.rda` files.
 * In your other files, you can load these using the `TABLE <- read_rds("data/FILENAME.rda")` function.
 
+```{r}
+name_basics <- read_rds("data/name_basics.rda")
+title_basics <- read_rds("data/title_basics.rda")
+title_principals <- read_rds("data/title_principals.rda")
+title_ratings <- read_rds("data/title_ratings.rda")
+```
+
 ## Part II: EDA of individual tables (aden)
 
 * For each of the 4 tables, perform basic exploratory data analysis. Report the following information:
   * For each quantitative column, provide some summary statistics
   * For any character columns, decided if they are actually representing factors/categorical data with a moderate number of columns. If so report the distributions for these variables.
   
-
-
 ```{r}
 library(dplyr)
 library(tidyr)
@@ -98,9 +110,7 @@ eda_summary(name_basics, "name_basics")
 eda_summary(title_basics, "title_basics")
 eda_summary(title_principals, "title_principals")
 eda_summary(title_ratings, "title_ratings")
-
 ```
-
 
   * Provide a plot for each table. Across all of the plots, try to show off the most possible different ggplot features (`geoms_` functions, `stat_` functions, coordinate systems, facets, use of several variables, annotations)
   
@@ -120,22 +130,200 @@ ggplot(title_basics_long, aes(x = genres)) +
   coord_flip() +
   labs(title = "Count of Movies by Genre", x = "Genre", y = "Count") +
   theme_bw()
-
 ```
-* For the `titles_basics` table
-  * use two different variables to group and explore how `runtimeMinutes` varies for these different groups. Produce appropriate summaries.
+
+```{r}
+title_plot <- title_basics %>%
+  filter(titleType %in% c("movie", "tvSeries", "short")) %>%
+  mutate(runtimeMinutes = as.numeric(runtimeMinutes)) %>%
+  ggplot(aes(titleType, runtimeMinutes)) +
+  geom_violin(aes(fill = titleType), show.legend = FALSE) +
+  geom_boxplot(width = 0.2, outlier.shape = NA) +
+  stat_summary(fun = "median", geom = "point", size = 2, color = "red") +
+  scale_y_log10() +
+  facet_wrap(~titleType, scales = "free_x") +
+  labs(title = "Runtime Distribution by Title Type",
+       caption = "Log scale for better visibility") +
+  coord_flip() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+title_plot
+```
+
+```{r}
+title_basics %>%
+  filter(primaryTitle != originalTitle) %>%
+  count()
+title_basics %>%
+  mutate(name_discrepancy = ifelse(primaryTitle != originalTitle, "Different", "Same")) %>%
+  ggplot(aes(x = startYear, fill = name_discrepancy)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Release Year Distribution by Name Discrepancy")
+```
+
+```{r}
+principals_plot <- title_principals %>%
+  left_join(title_basics %>% select(tconst, startYear), by = "tconst") %>%
+  filter(startYear >= 1900, startYear <= 2023) %>%
+  mutate(decade = floor(startYear/10)*10) %>%
+  count(decade, category) %>%
+  ggplot(aes(decade, category)) +
+  geom_tile(aes(fill = n), color = "white") +
+  geom_text(aes(label = scales::comma(n)), color = "black", size = 3) +
+  scale_fill_gradient(low = "yellow", high = "orange") +
+  scale_x_continuous(breaks = seq(1900, 2020, 20)) +
+  labs(title = "Film Roles Through the Decades",) +
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+
+principals_plot
+```
+
+```{r}
+ratings_plot <- title_ratings %>%
+  ggplot(aes(averageRating, numVotes)) +
+  geom_hex(bins = 50) +
+  geom_smooth(method = "gam", color = "red") +
+  annotate("text", x = 2, y = 1e6, 
+           label = paste("Correlation:", 
+                         round(cor(title_ratings$averageRating, 
+                                   log(title_ratings$numVotes)), 2))) +  # Explicit reference
+  scale_y_log10(labels = scales::comma) +
+  scale_fill_viridis_c(option = "magma") +
+  labs(title = "Rating vs. Number of Votes") +
+  theme_bw()
+
+ratings_plot
+```
   * How many titles are known for name that is different than the original release name?
-  * Graph the conditional distributions of release year based on the previous results. Comment on any trends you observe.
+
+```{r}
+count <- sum(title_basics$primaryTitle != title_basics$originalTitle, na.rm = TRUE)
+count
+```
+  * Graph the conditional distributions of release year based on the previous results.
+  
+```{r}
+title_basics %>%
+  mutate(
+    name_diff = primaryTitle != originalTitle,
+    startYear = as.numeric(startYear)
+  ) %>%
+  filter(!is.na(startYear), startYear >= 1900) %>%
+  ggplot(aes(startYear, fill = name_diff)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "conditional distributions of release year") +
+  theme_minimal()
+```
+
+Comment on any trends you observe.
+
+Titles with different names are more common in recent decades and this suggests increasing rebranding or localization efforts in modern media.
+
 * For the ratings, use the `cut` function to break the data into three groups based on the average ratings. Are higher rated titles rated more often or less often than lower rated titles? 
+
+```{r}
+ratings_group <- title_ratings %>%
+  mutate(
+    rating_group = cut(
+      averageRating,
+      breaks = c(0, 5, 7, 10),
+      labels = c("Low (0-5)", "Medium (5-7)", "High (7-10)")
+    )
+  ) %>%
+  group_by(rating_group) %>%
+  summarise(median_votes = median(numVotes, na.rm = TRUE))
+
+ratings_group
+```
+
 * For the names table, 
   * Count the number of titles each person is known for and plot this distribution.
+  
+```{r}
+name_counts <- name_basics %>%
+  mutate(num_titles = lengths(strsplit(knownForTitles, ","))) %>%
+  filter(!is.na(knownForTitles)) 
+
+(name_counts)
+```
+
+```{r}
+name_counts %>%
+  ggplot(aes(num_titles)) +
+  geom_bar(fill = "blue") +
+  labs(
+    title = "Number of 'Known For' Titles Per Person",
+    x = "Number of Titles",
+    y = "Count"
+  )
+```
+
   * investigate the age of cast members
-      * Group the data into living and deceased cast members. 
+      * Group the data into living and deceased cast members.
+      
+```{r}
+name_ages <- name_basics %>%
+  mutate(
+    status = ifelse(is.na(deathYear), "Living", "Deceased"),
+    age = ifelse(
+      status == "Deceased",
+      deathYear - birthYear,
+      2025 - birthYear
+    )
+  ) %>%
+  filter(age > 0, age < 120)
+
+name_ages
+```
+
       * For deceased cast members, provide a graph that shows the distribution of ages.
+      
+```{r}
+name_ages %>%
+  filter(status == "Deceased") %>%
+  ggplot(aes(age)) +
+  geom_histogram(binwidth = 5, fill = "blue") +
+  labs(title = "Age Distribution")
+```
+
       * Do the same for living cast members.
+      
+```{r}
+name_ages %>%
+  filter(status == "Living") %>%
+  ggplot(aes(age)) +
+  geom_histogram(binwidth = 5, fill = "blue") +
+  labs(title = "Age Distribution of Living Cast Members")
+```
+
 * Find all the actors with first names "Tom", "Thomas", "Thom" or "Tomas". How many are there?
+
+```{r}
+tom_actors <- name_basics %>%
+  mutate(first_name = word(primaryName, 1)) %>%
+  filter(
+    str_to_lower(first_name) %in% c("tom", "thomas", "thom", "tomas")
+  )
+
+nrow(tom_actors)
+```
+
+
 * How many titles use alliteration (i.e., all words in the title start with the same letter)?
 
+```{r}
+title_alliteration <- title_basics %>%
+  mutate(
+    title_upper = str_to_upper(primaryTitle),
+    words = str_split(title_upper, "\\s+"),
+    first_letters = map(words, ~ str_sub(.x, 1, 1)),
+    all_same = map_lgl(first_letters, ~ length(unique(.x)) == 1)
+  ) %>%
+  filter(all_same)
+
+nrow(title_alliteration)
+```
 
 ## Part III: Pivoting (Hania)
 
@@ -201,15 +389,123 @@ cat("The most common pair of genres is:",
 ## Part IV: Joining Tables
 
 * Join the table with one title-genre per row from the previous section with the ratings table.
+
+```{r}
+genre_ratings <- title_basics %>%
+  left_join(title_ratings, by = "tconst") %>%
+  filter(!is.na(averageRating))
+
+genre_ratings
+```
+
   * What is the highest rated genre? What is the lowest rated genre?
+  
+```{r}
+genre_ratings %>%
+  group_by(genres) %>%
+  summarise(mean_rating = mean(averageRating)) %>%
+  arrange(desc(mean_rating)) %>%
+  slice(1, n())
+```
+  
   * Using stacked bar charts, investigate the proportions of different genres over time. Are any incresing or decreasing? Use factor functions to help make the plots easier to read.
+  
+```{r}
+genre_ratings %>%
+  mutate(decade = floor(startYear / 10) * 10) %>%
+  count(decade, genres) %>%
+  group_by(decade) %>%
+  mutate(prop = n / sum(n)) %>%
+  filter(genres %in% c("Drama", "Comedy", "Action", "Horror")) %>%
+  ggplot(aes(decade, prop, fill = fct_reorder(genres, prop))) +
+  geom_col() +
+  labs(title = "Genre Proportions") +
+  scale_fill_brewer(palette = "Set2")
+```
+
 * Join the `title_basics` with the ratings table. Have the number of ratings changed over time (based on release year)? Display graphically but also answer with numerical results.
+
+```{r}
+title_basics %>%
+  left_join(title_ratings, by = "tconst") %>%
+  filter(startYear >= 1900) %>%
+  group_by(startYear) %>%
+  summarise(median_votes = median(numVotes, na.rm = TRUE)) %>%
+  ggplot(aes(startYear, median_votes)) +
+  geom_line() +
+  geom_smooth(method = "lm", color = "red") +
+  scale_y_log10() +
+  labs(title = "Median Votes per Title Over Time")
+```
+
+```{r}
+cor.test(title_basics$startYear, log(title_ratings$numVotes))
+```
+
+p value = 0.613 > 0.05, the number of ratings have not changed over time.
+
 * Join the names with the ratings and the principals table. 
+
+
   * Group by individual people, find the top ten people based on the median rating of the titles they appear in.
+  
+```{r}
+top_people <- title_principals %>%
+  left_join(title_ratings, by = "tconst") %>%
+  group_by(nconst) %>%
+  summarise(median_rating = median(averageRating, na.rm = TRUE)) %>%
+  arrange(desc(median_rating)) %>%
+  slice(1:10) %>%
+  left_join(name_basics, by = "nconst")
+```
+  
   * Find the proportions of genres for the the titles that include the top 10 rated principals.
+  
+```{r}
+# Make sure title_basics is loaded
+if (!exists("title_basics")) {
+  title_basics <- read_rds("data/title_basics.rda")
+}
+
+# Create the title_genres table (long-form genre table) if it doesn't exist
+if (!exists("title_genres")) {
+  title_genres <- title_basics %>%
+    filter(!is.na(genres)) %>%
+    separate_rows(genres, sep = ",")
+}
+
+# Now perform the join and calculations
+title_principals %>%
+  inner_join(top_people, by = "nconst") %>%
+  left_join(title_genres, by = "tconst") %>%
+  count(genres) %>%
+  mutate(prop = n / sum(n))
+```
+  
   * Graph ratings against years. What trends do you see?
+  
+```{r}
+title_principals %>%
+  left_join(title_basics, by = "tconst") %>%
+  left_join(title_ratings, by = "tconst") %>%
+  ggplot(aes(startYear, averageRating)) +
+  geom_hex(bins = 30) +
+  geom_smooth(method = "lm", color = "red")
+```
+
 * Create a table with one row for each person in the `name_basics` table and title they are known for. Join this to the ratings table to get the ratings of the "known for" films. Find the person (or people) who have the highest median known for rating.
-* 
+
+```{r}
+name_ratings <- name_basics %>%
+  separate_rows(knownForTitles, sep = ",") %>%
+  left_join(title_ratings, by = c("knownForTitles" = "tconst")) %>%
+  group_by(nconst, primaryName) %>%
+  summarise(median_rating = median(averageRating, na.rm = TRUE)) %>%
+  arrange(desc(median_rating))
+
+name_ratings %>% slice(1)
+```
+
 
 
 ## Part V: Profiling and Parallel Processing
@@ -300,15 +596,15 @@ After re‐profiling the fully optimized pipeline with profvis, total elapsed ti
 
 
 * Select a previous computation that could be improved using parallelization and implement a parallelization solution. Using `system.time` show that parallelization improves performance.
-
-```{r parallel-genre-counts, message=FALSE, warning=FALSE}
-library(data.table)
+```{r final-chunk-with-parallel-and-genres, message=FALSE, warning=FALSE}
 library(data.table)
 library(parallel)
+library(dplyr)
+library(ggplot2)
 
-#–– Prepare the long‐form genre table (if you haven’t already)
+#–– Prepare the long‐form genre table (equivalent to title_genres)
 dt <- as.data.table(title_basics)
-titles_genre_dt <- dt[
+titles_genre_long <- dt[
   !is.na(startYear) & genres != "",
   .(
     tconst,
@@ -319,21 +615,27 @@ titles_genre_dt <- dt[
   by = .(tconst)
 ]
 
-years <- unique(titles_genre_dt$startYear)
+#–– Now, calculate genre proportions using titles_genre_long
+genre_proportions <- titles_genre_long %>%
+  select(genres) %>% # Select only 'genres' to avoid duplicates
+  count(genres, name = "genre_count") %>% # Use 'name' to control the count column name
+  mutate(prop = genre_count / sum(genre_count))
 
-#–– Create a fork cluster (inherits loaded packages & objects!)
+print("Genre Proportions:")
+print(genre_proportions)
+
+#–– Parallel processing for genre counting (as before, but using titles_genre_long)
+years <- unique(titles_genre_long$startYear)
 ncores <- max(detectCores() - 1, 1)
 cl     <- makeForkCluster(ncores)
 
-#–– Serial timing
-t_serial <- system.time({
-  genre_counts_serial <- titles_genre_dt[, .(count = .N), by = .(startYear, genres)]
+t_serial_genre_count <- system.time({
+  genre_counts_serial <- titles_genre_long[, .(count = .N), by = .(startYear, genres)]
 })
 
-#–– Parallel timing
-t_parallel <- system.time({
+t_parallel_genre_count <- system.time({
   year_lists <- parLapply(cl, years, function(yr) {
-    sub <- titles_genre_dt[startYear == yr]
+    sub <- titles_genre_long[startYear == yr]
     sub[, .(startYear = yr, genres, count = .N), by = genres]
   })
   genre_counts_parallel <- rbindlist(year_lists)
@@ -341,9 +643,10 @@ t_parallel <- system.time({
 
 stopCluster(cl)
 
-#–– Print results
-print(t_serial)
-print(t_parallel)
+cat("\nSerial Genre Counting Time:\n")
+print(t_serial_genre_count)
+cat("\nParallel Genre Counting Time:\n")
+print(t_parallel_genre_count)
 ```
 There is a clear improvement when using parallel processing.
 
@@ -380,7 +683,15 @@ bm <- microbenchmark(
 print(bm)
 
 ```
-The regex_count version runs roughly 3× faster (median ≈1.6 ms vs. ≈5.0 ms) and is more concise. Recommendation: use str_count(x, ",") + 1 for counting comma-separated items.
+Median times:
+
+regex_count: 970.98 μs (~0.97 ms)
+
+split_count: 4873.75 μs (~4.87 ms)
+
+Speed‐up: The regex‐based approach is roughly 5× faster than the split-and-length method.
+
+Recommendation: Use the concise, vectorized str_count(x, ",") + 1 version for counting comma-separated items.
 
 ## Part VI: Shiny Applications (Hania)
 
