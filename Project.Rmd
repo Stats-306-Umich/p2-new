@@ -212,6 +212,89 @@ print(most_common_pair)
 
 * These are large data sets (and yet only a sample of the entire IMDb!), so it make sense spend some time improving our code.
 * Pick one or more of the previous problems and profile the performance of that piece. Write up your findings. If you see any opportunities to improve performance, feel fee to implement than and share the results.
+
+```{r}
+#–– Load packages once at the top
+if (!requireNamespace("profvis", quietly = TRUE)) install.packages("profvis")
+library(profvis)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#–– Profile the genre-over-time pipeline
+profvis({
+  titles_genre_expanded <- title_basics %>%
+    separate_rows(genres, sep = ",") %>%
+    filter(!is.na(startYear), genres != "")
+
+  genre_counts <- titles_genre_expanded %>%
+    group_by(startYear, genres) %>%
+    summarise(count = n(), .groups = "drop")
+
+  ggplot(genre_counts, aes(x = startYear, y = count, color = genres)) +
+    geom_line() +
+    labs(
+      title = "Title Counts by Genre Over Time",
+      x     = "Year",
+      y     = "Number of Titles"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+})
+
+
+```
+The profvis profile makes it clear that the vast majority of execution time—about 1.57 s out of 1.73 s, or nearly 90%—is spent inside separate_rows(), the step that unnests the comma‐delimited genre strings. All of the downstream operations (filtering, grouping, summarising, even plotting) together consume less than 10% of the total time.  
+
+```{r}
+#–– 1. Install & load packages
+if (!requireNamespace("profvis", quietly = TRUE)) install.packages("profvis")
+if (!requireNamespace("data.table", quietly = TRUE)) install.packages("data.table")
+if (!requireNamespace("ggplot2",   quietly = TRUE)) install.packages("ggplot2")
+
+library(profvis)
+library(data.table)
+library(ggplot2)
+
+#–– 2. Profile the optimized pipeline
+profvis({
+  # Convert your titanic table to data.table
+  dt <- as.data.table(title_basics)
+
+  # Fast pivot: split & unnest genres per title
+  titles_genre_dt <- dt[
+    !is.na(startYear) & genres != "",
+    .(   # this j-expression runs per group defined in 'by'
+      primaryTitle,
+      startYear,
+      genres = unlist(strsplit(genres, split = ","))
+    ),
+    by = .(tconst)  # group by the unique title ID
+  ]
+
+  # Fast aggregation: count titles by year & genre
+  genre_counts_dt <- titles_genre_dt[
+    ,
+    .(count = .N),
+    by = .(startYear, genres)
+  ]
+
+  # Plot to include in the profile
+  ggplot(genre_counts_dt, aes(x = startYear, y = count, color = genres)) +
+    geom_line() +
+    labs(
+      title = "Title Counts by Genre Over Time (data.table)",
+      x     = "Year",
+      y     = "Number of Titles"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+})
+
+```
+After re‐profiling the fully optimized pipeline with profvis, total elapsed time has dropped from roughly 1.73 s to 0.79 s. The new flame graph shows that our “pivot to long” step—now implemented with strsplit(..., ",") plus unlist() inside a data.table[ , …, by=.(tconst)] call—accounts for about 560 ms (strsplit ~330 ms, unlist ~230 ms), while the subsequent data.table grouping costs only 70 ms, and the ggplot rendering is negligible. In contrast to the original tidyr::separate_rows() approach (which took ∼1.57 s), this change yields a 3× speed‐up on the unnesting phase and over a 2× improvement end‐to‐end—confirming that switching to a C-level split+unnest in data.table was an effective performance enhancement.
+
+
 * Select a previous computation that could be improved using parallelization and implement a parallelization solution. Using `system.time` show that parallelization improves performance.
 * One task we performed involved counting items in strings separated by commas. Propose two different functions that could perform this taks. Compare them using bench marking. Which version would you recommend?
 
